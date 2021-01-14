@@ -1,9 +1,18 @@
+buildscript {
+	repositories {
+		maven { url "https://repo.spring.io/plugins-release" }
+	}
+}
+
 plugins {
 	id 'java-gradle-plugin'
 }
 
 repositories {
+	maven { url 'https://maven.aliyun.com/nexus/content/groups/public/' }
+	maven { url 'https://maven.aliyun.com/nexus/content/repositories/jcenter' }
 	mavenCentral()
+	maven { url "https://repo.spring.io/plugins-release" }
 	gradlePluginPortal()
 }
 

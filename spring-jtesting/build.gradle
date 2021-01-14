@@ -1,0 +1,23 @@
+plugins {
+    id 'java'
+}
+
+group 'org.springframework'
+version '5.2.12.BUILD-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+apply plugin: 'kotlin'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile(project(":spring-context"))
+    compile(project(":spring-beans"))
+    compile(project(":spring-core"))
+    compile(project(":spring-aop"))
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
