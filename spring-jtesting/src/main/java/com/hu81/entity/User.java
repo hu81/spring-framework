@@ -1,4 +1,4 @@
-package com.hu81;
+package com.hu81.entity;
 
 public class User {
 	private Long id;

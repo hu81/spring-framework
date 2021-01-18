@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+	<bean id="user" class="com.hu81.entity.User"></bean>
+
+	<bean id="welcomeController" class="com.hu81.controller.WelcomeController">
+		<property name="welcomeService" ref="welcomeService"></property>
+	</bean>
+
+	<bean id="welcomeService" class="com.hu81.service.impl.WelcomeServiceImpl">
+		<property name="welcomeDao" ref="welcomeDao"></property>
+	</bean>
+
+	<bean id="welcomeDao" class="com.hu81.dao.impl.WelcomeDaoImpl"></bean>
+</beans>
