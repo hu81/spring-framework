@@ -1,0 +1,20 @@
+Ioc Init:
+    Resource - ResourceLoader - ResourceResolver
+Refresh:
+    PostProcessor (Interface)
+    Aware (Interface)
+    EventListener (Interface)
+
+    BeanDefinition
+    MessageResource
+    EventListenerMulticaster
+    EventListener
+
+Sub process:
+@Bean loading process
+@Controller/@Service/@Repository loading process
+@ComponentScan loading process
+PostProcessor invoke time
+
+Question process:
+循环依赖

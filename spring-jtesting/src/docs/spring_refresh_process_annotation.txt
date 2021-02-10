@@ -1,0 +1,124 @@
+AnnotationConfigApplicationContext
+	-> AnnotationConfigApplicationContext(Class<?>... componentClasses)
+		-> AnnotationConfigApplicationContext()
+			-> new AnnotatedBeanDefinitionReader(this)
+				---- AnnotatedBeanDefinitionReader
+				-> AnnotatedBeanDefinitionReader(BeanDefinitionRegistry registry, Environment environment)
+					---- AnnotationConfigUtils
+					-> registerAnnotationConfigProcessors(BeanDefinitionRegistry registry)
+						-> beanFactory.setDependencyComparator(AnnotationAwareOrderComparator.INSTANCE)   --> (handle @Order annotation)
+						-> beanFactory.setAutowireCandidateResolver(new ContextAnnotationAutowireCandidateResolver())  --> (handle @Condition annotation)
+						-> registerPostProcessor  (register postprocesser one by one)
+							---- DefaultListableBeanFactory
+							-> registerBeanDefinition
+			-> new ClassPathBeanDefinitionScanner(this)
+				-> (Canstructoer final ->) ClassPathBeanDefinitionScanner(BeanDefinitionRegistry registry, boolean useDefaultFilters, Environment environment, @Nullable ResourceLoader resourceLoader)
+					-> registerDefaultFilters 
+						(Register the default filter @Component, @Controller, @Service, @Repository, Note: @Controller, @Service, @Repository all include @Component
+						will used to filter/scan annotated classes)
+					=> (Most import function in ClassPathBeanDefinitionScanner, will be used in refresh after)  scan()
+						-> this.registry.getBeanDefinitionCount()  
+							---- DefaultListableBeanFactory
+							-> this.beanDefinitionMap.size();
+						-> doScan(String... basePackages)
+							-> findCandidateComponents(basePackage)
+								-> (Set<BeanDefinition>) scanCandidateComponents(String basePackage)
+									-> (Step 1) Resource[] resources = getResourcePatternResolver().getResources(packageSearchPath)   -> scan package read css files as resource
+									-> (Step 2) MetadataReader metadataReader = getMetadataReaderFactory().getMetadataReader(resource) -> read meta data of class (meta data include annotation info)
+									-> (Step 3) isCandidateComponent -> check if class is required annotation(@Component) class  by filter
+									-> (Step 4) ScannedGenericBeanDefinition sbd = new ScannedGenericBeanDefinition(metadataReader)  -> convert class to BeanDefinition
+									-> (Step 5) candidates.add(sbd);  -> add to set and return
+							-> postProcessBeanDefinition((AbstractBeanDefinition) candidate, beanName);                        -> looks like handling annotations
+							-> AnnotationConfigUtils.processCommonDefinitionAnnotations((AnnotatedBeanDefinition) candidate);  -> looks like handling annotations
+							-> registerBeanDefinition    ---> register bean definitions
+								-> BeanDefinitionReaderUtils.registerBeanDefinition(definitionHolder, registry);
+									---- DefaultListableBeanFactory
+									-> registerBeanDefinition(String beanName, BeanDefinition beanDefinition)
+										-> beanDefinition.validate();
+										-> BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName); (check existing)
+										-> this.beanDefinitionMap.put(beanName, beanDefinition);
+										-> this.beanDefinitionNames.add(beanName);
+			-> this.reader.register(componentClasses);
+				-> register(Class<?>... componentClasses)   ---> register main class
+					-> doRegisterBean(beanClass, null, null, null, null)
+						-> BeanDefinitionReaderUtils.registerBeanDefinition(definitionHolder, this.registry)
+							-> ......
+			-> refresh()
+				-> prepareRefresh()
+					-> initPropertySources() ==> web context init web properties
+					-> init applicationListeners set
+				-> obtainFreshBeanFactory()
+					-> refreshBeanFactory()
+					---- GenericApplicationContext do nothing
+					-> getBeanFactory()
+				-> prepareBeanFactory() --> Configure the factory's standard context characteristics, such as the context's ClassLoader and post-processors.
+				-> postProcessBeanFactory() --> do nothing, empty method.
+				-> invokeBeanFactoryPostProcessors(beanFactory)
+					-> PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(beanFactory, getBeanFactoryPostProcessors());
+						-> beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor.class, true, false)   ---> get bean definition registry post processor
+						-> sortPostProcessors(currentRegistryProcessors, beanFactory);
+						-> invokeBeanDefinitionRegistryPostProcessors(currentRegistryProcessors, registry)
+							-> (for loop) postProcessor.postProcessBeanDefinitionRegistry(registry)
+								---- ConfigurationClassPostProcessor
+								-> processConfigBeanDefinitions(registry)
+									-> ConfigurationClassUtils.checkConfigurationClassCandidate(beanDef, this.metadataReaderFactory) ---> find classes which have @Configuration annotation
+									-> ConfigurationClassParser parser = new ConfigurationClassParser(...)  ---> create parser
+									-> parser.parse(candidates)
+										->  parse(Set<BeanDefinitionHolder> configCandidates)
+											-> processConfigurationClass
+												-> doProcessConfigurationClass
+													-> parse annotations add in configuration class
+													-> Set<AnnotationAttributes> componentScans = AnnotationConfigUtils.attributesForRepeatable(sourceClass.getMetadata(), ComponentScans.class, ComponentScan.class);
+														^(get componentScans annotation info)
+													-> Set<BeanDefinitionHolder> scannedBeanDefinitions = this.componentScanParser.parse(componentScan, sourceClass.getMetadata().getClassName())
+														---- ComponentScanAnnotationParser
+														-> parse(AnnotationAttributes componentScan, final String declaringClass)
+															-> new ClassPathBeanDefinitionScanner
+																-> scanner.doScan(StringUtils.toStringArray(basePackages))  ---> logic related to doScan function above
+					
+				-> registerBeanPostProcessors()
+					-> PostProcessorRegistrationDelegate.registerBeanPostProcessors(beanFactory, this);
+						-> String[] postProcessorNames = beanFactory.getBeanNamesForType(BeanPostProcessor.class, true, false)  ---> get post processor name from bean factory
+						-> beanFactory.addBeanPostProcessor(new BeanPostProcessorChecker(beanFactory, beanProcessorTargetCount))  ---> Register BeanPostProcessorChecker, used to check post processor is eligible or not
+						-> registerBeanPostProcessors(beanFactory, nonOrderedPostProcessors)
+							-> this.beanPostProcessors.add(beanPostProcessor)   ---->  add to beanPostProcessors list
+				-> initMessageSource()
+					-> if (beanFactory.containsLocalBean(MESSAGE_SOURCE_BEAN_NAME))   ---> check if local messageSource bean exist
+						-> if yes use local defined messageSource otherwise use default DelegatingMessageSource
+					-> this.messageSource = xxx   ---> set messageSource for application context
+						-> usage for message source: 1. context.getMessage  2. 3.
+				
+				-> initApplicationEventMulticaster()
+					-> if (beanFactory.containsLocalBean(APPLICATION_EVENT_MULTICASTER_BEAN_NAME))
+						-> if yes use local defined applicationEventMulticaster otherwise use default SimpleApplicationEventMulticaster
+						-> this.applicationEventMulticaster = xxx    ---> set applicationEventMulticaster for application context
+				
+				-> onRefresh()    ---> Template method (do nothing in this process)
+				
+				-> registerListeners()
+					-> 1. getApplicationListeners() / getApplicationEventMulticaster().addApplicationListener(listener)  ---> register listeners init from properties
+					-> 2. String[] listenerBeanNames = getBeanNamesForType(ApplicationListener.class, true, false) ---> get listeners from beanfactory
+					->    getApplicationEventMulticaster().addApplicationListenerBean(listenerBeanName)     ---> add to multicaster listener set
+					-> 3. Set<ApplicationEvent> earlyEventsToProcess = this.earlyApplicationEvents   ---> get early events (empty)
+					->    getApplicationEventMulticaster().multicastEvent(earlyEvent)         ---> publish early events
+				
+				-> finishBeanFactoryInitialization(beanFactory) ---> Finish the initialization of this context's bean factory, initializing all remaining singleton beans
+					-> beanFactory.preInstantiateSingletons()
+					---- DefaultListableBeanFactory
+						-> preInstantiateSingletons()
+							-> getBean(beanName)    // instance beans
+							-> smartSingleton.afterSingletonsInstantiated()  // do something after singleton bean inited, such as: read @EventListener annotated class and parse to event listener list
+				-> finishRefresh()
+					-> clearResourceCaches()  // Clear context-level resource caches (such as ASM metadata from scanning).
+					-> initLifecycleProcessor()  // Initialize lifecycle processor for this context.
+					-> getLifecycleProcessor().onRefresh()  // Propagate refresh to lifecycle processor first.
+					-> publishEvent(new ContextRefreshedEvent(this)) // Publish the final event.
+					-> LiveBeansView.registerApplicationContext(this) // Participate in LiveBeansView MBean, if active.
+					-> resetCommonCaches()
+					
+				-> resetCommonCaches()
+
+
+				
+Questions:
+1. What is JSR-330?

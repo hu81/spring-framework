@@ -1,0 +1,69 @@
+FileSystemXmlApplicationContext
+	-> FileSystemXmlApplicationContext(String configLocation)
+	-> FileSystemXmlApplicationContext(String[] configLocations, boolean refresh, @Nullable ApplicationContext parent)
+		-> super(parent);  => init resourceLoader  (self)  (PathMatchingResourcePatternResolver)
+		-> refresh()
+			-> prepareRefresh()
+				-> initPropertySources() ==> web context init web properties
+				-> init applicationListeners set
+			-> obtainFreshBeanFactory()  
+				(beanFactory init with XML steps: read xml as resource -> load beans defined in xml as bean definition -> put to beanDefinitionMap)
+				-> refreshBeanFactory()
+					----- AbstractRefreshableApplicationContext
+					-> close/destory beans & factories
+					-> createBeanFactory()
+						-> new DefaultListableBeanFactory
+					-> beanFactory.setSerializationId(getId());  ===> set serialization id, used to ·´ÐòÁÐ»¯
+					-> customizeBeanFactory()   ===¡· customize beanfactory settings (allow bean defintion override/ allow Circular References)
+					-> loadBeanDefinitions(beanFactory)  ===> load beans as bean definitions
+						---- AbstractXmlApplicationContext
+						-> loadBeanDefinitions(beanFactory)
+							-> new XmlBeanDefinitionReader(beanFactory);  ===> Create a new XmlBeanDefinitionReader for the given BeanFactory.
+							-> initBeanDefinitionReader(beanDefinitionReader);
+							-> loadBeanDefinitions(beanDefinitionReader);
+						-> loadBeanDefinitions(XmlBeanDefinitionReader reader) 
+									-> reader.loadBeanDefinitions(configLocations);
+						---- XmlBeanDefinitionReader
+							-> loadBeanDefinitions(String... locations)
+							-> loadBeanDefinitions(String location)
+							-> loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources)
+								-> resourceLoader instanceof ResourcePatternResolver
+								-> resourceLoader.getResources(location)
+								---- PathMatchingResourcePatternResolver
+									-> Resource[] getResources(String locationPattern)
+									-> Resource getResource(String location)   ===> (FileSystemResource)
+									-> loadBeanDefinitions(resources)
+						-> loadBeanDefinitions(Resource resource)
+						-> loadBeanDefinitions(EncodedResource encodedResource)
+						-> doLoadBeanDefinitions(InputSource inputSource, Resource resource)
+							-> Document doc = doLoadDocument(inputSource, resource);
+							-> registerBeanDefinitions(Document doc, Resource resource)
+								-> createBeanDefinitionDocumentReader();
+								-> int countBefore = getRegistry().getBeanDefinitionCount();  (this.beanDefinitionMap.size())
+								-> documentReader.registerBeanDefinitions
+								---- DefaultBeanDefinitionDocumentReader
+									-> doRegisterBeanDefinitions(Element root)
+										-> preProcessXml(root);  (hook empty)
+										-> parseBeanDefinitions(root, this.delegate);
+											-> parseDefaultElement(ele, delegate);  (if delegate.isDefaultNamespace(ele)  namespace is xxxx/beans)
+											-> processBeanDefinition(ele, delegate); (if delegate.nodeNameEquals(ele, BEAN_ELEMENT))
+												-> parseBeanDefinitionElement(ele, null);
+												-> parseBeanDefinitionElement(ele, beanName, containingBean)
+													-> createBeanDefinition(className, parent)
+													-> parseBeanDefinitionAttributes(ele, beanName, containingBean, bd);
+													-> parseMetaElements(ele, bd);
+													-> parseLookupOverrideSubElements(ele, bd.getMethodOverrides());
+													-> parseReplacedMethodSubElements(ele, bd.getMethodOverrides());
+													-> parseConstructorArgElements(ele, bd);
+													-> parsePropertyElements(ele, bd);
+													-> parseQualifierElements(ele, bd);
+												-> BeanDefinitionReaderUtils.registerBeanDefinition(bdHolder, getReaderContext().getRegistry());
+													---- DefaultListableBeanFactory
+													-> registerBeanDefinition(String beanName, BeanDefinition beanDefinition)
+														-> beanDefinition.validate();
+														-> BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName); (check existing)
+														-> this.beanDefinitionMap.put(beanName, beanDefinition);
+														-> this.beanDefinitionNames.add(beanName);
+										-> postProcessXml(root); (hook empty)
+				-> getBeanFactory()
+			-> 
